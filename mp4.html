@@ -1,71 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<link href="https://vjs.zencdn.net/5.10.4/video-js.css" rel="stylesheet" />
-	<style type="text/css">
-	html, body {
-		height: 100%;
-		margin: 0;
-		padding: 0;
-		overflow: hidden;
-		background-color: black;
-	}
-	#player {
-		width: 100%;
-		height: 100%;
-	}
-	</style>
+    <title>MP4 Player</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; }
+        video { width: 100vw; height: 100vh; object-fit: contain; } /* 'contain' keeps aspect ratio, 'cover' fills the space */
+    </style>
 </head>
 <body>
-	<video id="player" class="video-js vjs-default-skin" controls preload="auto" width="100%" height="100%">
-		<source id="player-mp4src" type="video/mp4">
-	</video>
+    <video id="videoPlayer" controls autoplay></video>
 
-	<script type="text/javascript" src="medialib.js"></script>
-	<script src="https://vjs.zencdn.net/5.10.4/video.js"></script>
+    <script>
+        const videoPlayer = document.getElementById('videoPlayer');
+        const urlParams = new URLSearchParams(window.location.search);
+        const mp4Url = urlParams.get('id');
+        const startTime = urlParams.get('start'); // Für Startzeit aus der URL
 
-	<script type="text/javascript">
-		medialibDelegate = medialib.createEventDelegate({
-			play: function() {
-				this.play();
-			},
-			pause: function() {
-				this.pause();
-			},
-			seek: function(obj) {
-				this.currentTime(obj.time);
-			},
-			setVolume: function(obj) {
-				this.volume(obj.vol);
-			}
-		});
+        if (mp4Url) {
+            videoPlayer.src = mp4Url;
+            if (startTime) {
+                videoPlayer.currentTime = parseFloat(startTime);
+            }
+        } else {
+            console.error("No MP4 URL provided in 'id' parameter.");
+        }
 
-		var params = medialib.getParams();
-		var id = decodeURIComponent(params.id || params.vid || "");
+        // Send events back to Garry's Mod
+        function sendEvent(id, data) {
+            if (window.medialiblua && window.medialiblua.Event) {
+                window.medialiblua.Event(id, JSON.stringify(data));
+            } else {
+                console.warn("medialiblua.Event not available, cannot send event:", id, data);
+            }
+        }
 
-		document.getElementById("player-mp4src").setAttribute("src", id);
-		videojs("player", {"controls": true, "preload": "auto"}, function() {
-			this.load();
-			this.play();
-		}).ready(function() {
-			this.on("play", function(e) {
-				medialib.emitEvent("stateChange", {state: "playing", time: this.currentTime()});
-			});
-			this.on("pause", function(e) {
-				medialib.emitEvent("stateChange", {state: "paused", time: this.currentTime()});
-			});
-			this.on("ended", function(e) {
-				medialib.emitEvent("stateChange", {state: "ended", time: this.currentTime()});
-			});
-			this.on("seeking", function(e) {
-				medialib.emitEvent("stateChange", {state: "buffering", time: this.currentTime()});
-			});
-			this.on("seeked", function(e) {
-				medialib.emitEvent("stateChange", {state: "playing", time: this.currentTime()});
-			});
+        videoPlayer.addEventListener('play', () => {
+            sendEvent('stateChange', { state: 'playing', time: videoPlayer.currentTime });
+        });
+        videoPlayer.addEventListener('pause', () => {
+            sendEvent('stateChange', { state: 'paused', time: videoPlayer.currentTime });
+        });
+        videoPlayer.addEventListener('ended', () => {
+            sendEvent('stateChange', { state: 'ended', time: videoPlayer.currentTime });
+        });
+        videoPlayer.addEventListener('playing', () => {
+            sendEvent('stateChange', { state: 'playing', time: videoPlayer.currentTime });
+        });
+        videoPlayer.addEventListener('waiting', () => {
+            sendEvent('stateChange', { state: 'buffering', time: videoPlayer.currentTime });
+        });
+        videoPlayer.addEventListener('error', (e) => {
+            sendEvent('error', { message: 'Video playback error', detail: e.message || 'unknown' });
+        });
 
-			medialibDelegate.playerLoaded(this);
-		});
-	</script>
+        // Implement simple commands for medialibDelegate (optional but good practice)
+        window.medialibDelegate = {
+            run: function(command, args) {
+                if (command === 'setVolume' && args && typeof args.vol === 'number') {
+                    videoPlayer.volume = args.vol;
+                } else if (command === 'seek' && args && typeof args.time === 'number') {
+                    videoPlayer.currentTime = args.time;
+                } else if (command === 'play') {
+                    videoPlayer.play().catch(e => console.error("Play failed:", e));
+                } else if (command === 'pause') {
+                    videoPlayer.pause();
+                }
+                // setQuality is typically not directly supported by native HTML video,
+                // but you could add logic here if you have multiple source qualities.
+            }
+        };
+
+        // Initial state update after video loads metadata
+        videoPlayer.addEventListener('loadedmetadata', () => {
+            sendEvent('playerLoaded', {});
+            sendEvent('stateChange', { state: videoPlayer.paused ? 'paused' : 'playing', time: videoPlayer.currentTime });
+        });
+
+    </script>
 </body>
 </html>
