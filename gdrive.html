@@ -1,48 +1,19 @@
 <!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Google Drive Video Player</title>
-<style>
-  body, html {
-    margin: 0; padding: 0; height: 100%; background: #000;
-    display: flex; justify-content: center; align-items: center;
-  }
-  iframe {
-    width: 80vw;
-    height: 45vw; /* 16:9 Aspect Ratio */
-    max-width: 1280px;
-    max-height: 720px;
-    border: none;
-    background: #000;
-  }
-</style>
-</head>
-<body>
-<script>
-// URL-Parameter "id" auslesen
-function getParam(name) {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get(name);
-}
+<html>
+  <body style="margin:0; background:black;">
+    <video id="player" controls autoplay style="width:100vw; height:100vh;">
+    </video>
 
-const fileId = getParam('id');
-if (!fileId) {
-  document.body.innerHTML = '<p style="color: white; font-family: sans-serif;">Keine Google Drive Datei-ID angegeben.</p>';
-} else {
-  // Google Drive Embed URL erzeugen
-  // id kann entweder die reine ID sein oder ein ganzer Link.
-  // Falls ganzer Link, ID extrahieren:
-  let id = fileId.match(/[-\w]{25,}/);
-  if (id) id = id[0];
-  else id = fileId;
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const id = urlParams.get("id");
 
-  const embedUrl = `https://drive.google.com/file/d/${id}/preview`;
-
-  // iframe einfügen
-  document.body.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-}
-</script>
-</body>
+      if (id) {
+        const video = document.getElementById("player");
+        video.src = id;
+      } else {
+        document.body.innerText = "No video ID provided";
+      }
+    </script>
+  </body>
 </html>
