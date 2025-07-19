@@ -1,42 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<style>
-		html, body {
-			height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: black;
-		}
-		#player {
-			width: 100%; height: 100%;
-		}
-	</style>
 	<link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
 </head>
 <body>
 	<video id="player" class="video-js vjs-default-skin" controls autoplay preload="auto" width="100%" height="100%">
-		<source id="player-mp4src" src="" type="video/mp4">
+		<source id="player-mp4src" src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
 	</video>
 
 	<script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
-	<script src="medialib.js"></script>
 	<script>
-		var params = medialib.getParams();
-		var id = decodeURIComponent(params.id || params.vid);
-
-		document.getElementById("player-mp4src").setAttribute("src", id);
-
 		videojs("player", {}, function() {
-			this.load();
 			this.play();
-
-			this.on("play", function() {
-				medialib.emitEvent("stateChange", {state: "playing", time: this.currentTime()});
-			});
-			this.on("pause", function() {
-				medialib.emitEvent("stateChange", {state: "paused", time: this.currentTime()});
-			});
-			this.on("ended", function() {
-				medialib.emitEvent("stateChange", {state: "ended", time: this.currentTime()});
-			});
 		});
 	</script>
 </body>
