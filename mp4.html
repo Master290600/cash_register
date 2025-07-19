@@ -25,6 +25,7 @@
 	<script src="https://vjs.zencdn.net/5.10.4/video.js"></script>
 
 	<script type="text/javascript">
+		// Erstellt das Event-Delegat-Objekt für medialib
 		medialibDelegate = medialib.createEventDelegate({
 			play: function() {
 				this.play();
@@ -42,30 +43,49 @@
 
 		var params = medialib.getParams();
 		var id = decodeURIComponent(params.id || params.vid || "");
+		var startTime = parseFloat(params.start || 0);
 
-		document.getElementById("player-mp4src").setAttribute("src", id);
-		videojs("player", {"controls": true, "preload": "auto"}, function() {
-			this.load();
-			this.play();
-		}).ready(function() {
-			this.on("play", function(e) {
-				medialib.emitEvent("stateChange", {state: "playing", time: this.currentTime()});
-			});
-			this.on("pause", function(e) {
-				medialib.emitEvent("stateChange", {state: "paused", time: this.currentTime()});
-			});
-			this.on("ended", function(e) {
-				medialib.emitEvent("stateChange", {state: "ended", time: this.currentTime()});
-			});
-			this.on("seeking", function(e) {
-				medialib.emitEvent("stateChange", {state: "buffering", time: this.currentTime()});
-			});
-			this.on("seeked", function(e) {
-				medialib.emitEvent("stateChange", {state: "playing", time: this.currentTime()});
-			});
+		if (!id) {
+			console.error("Kein MP4-Link übergeben!");
+		} else {
+			document.getElementById("player-mp4src").setAttribute("src", id);
+			
+			videojs("player", {"controls": true, "preload": "auto"}, function() {
+				this.load();
 
-			medialibDelegate.playerLoaded(this);
-		});
+				this.ready(() => {
+					const player = this;
+
+					player.on("loadedmetadata", function() {
+						if (!isNaN(startTime)) {
+							player.currentTime(startTime);
+						}
+						player.play().catch((err) => {
+							console.warn("Autoplay blockiert:", err);
+							medialib.emitEvent("error", { message: "Autoplay blockiert", detail: err.message });
+						});
+					});
+
+					player.on("play", function() {
+						medialib.emitEvent("stateChange", {state: "playing", time: player.currentTime()});
+					});
+					player.on("pause", function() {
+						medialib.emitEvent("stateChange", {state: "paused", time: player.currentTime()});
+					});
+					player.on("ended", function() {
+						medialib.emitEvent("stateChange", {state: "ended", time: player.currentTime()});
+					});
+					player.on("seeking", function() {
+						medialib.emitEvent("stateChange", {state: "buffering", time: player.currentTime()});
+					});
+					player.on("seeked", function() {
+						medialib.emitEvent("stateChange", {state: "playing", time: player.currentTime()});
+					});
+
+					medialibDelegate.playerLoaded(player);
+				});
+			});
+		}
 	</script>
 </body>
 </html>
