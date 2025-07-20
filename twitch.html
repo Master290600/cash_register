@@ -1,0 +1,113 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+	<head>
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+				overflow-y: hidden;
+			}
+			#twitch_embed_player {
+				position: absolute;
+				left: 0; top: 0; right: 0; bottom: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="twitch_embed_player">
+		</div>
+
+		<script src="medialib.js"></script>
+		<script>
+			var qualityMap = {
+				low: "360",
+				medium: "480",
+				high: "720",
+				veryhigh: "chunked"
+			}
+
+			medialibDelegate = medialib.createEventDelegate({
+				play: function() {
+					this.play();
+				},
+				pause: function() {
+					this.pause();
+				},
+				seek: function(obj) {
+					this.seek(obj.time);
+				},
+				setVolume: function(obj) {
+					this.setVolume(obj.vol);
+				},
+				setQuality: function(obj) {
+					var mapped = qualityMap[obj.quality] || "auto";
+
+					var applyQuality = function() {
+						var qualities = this.getQualities();
+
+						if (qualities.length === 0) {
+							// qualities did not load yet. Try again later
+							setTimeout(applyQuality, 500);
+							console.log("[Medialib] Delaying applyQuality..");
+							return;
+						}
+
+						var foundQual = null;
+
+						for (var key in qualities) {
+							var qualObj = qualities[key];
+
+							if (qualObj.group.startsWith(mapped)) {
+								foundQual = qualObj.group;
+								break;
+							}
+						}
+
+						if (!foundQual) {
+							console.log("[Medialib] warning: twitch does not have quality " + (obj.quality || "null"));
+							foundQual = "auto";
+						}
+
+						this.setQuality(foundQual);
+					}.bind(this);
+					applyQuality();
+				}
+			});
+
+			var params = medialib.getParams();
+			var channel = params.id || params.channel;
+
+			medialib.loadAsync("https://player.twitch.tv/js/embed/v1.js", function() {
+				var options = {
+					width: "100%",
+					height: "100%",
+					channel: channel
+				};
+				var player = new Twitch.Player("twitch_embed_player", options);
+				player.addEventListener(Twitch.Player.READY, function() {
+					var startPaused = function() {
+						this.pause();
+						if (!this.isPaused()) {
+							// player does not actually accept commands yet, waiting
+							setTimeout(startPaused, 300);
+							console.log("[Medialib] Delaying startPaused..");
+						} else {
+							// loaded, run commands
+							medialibDelegate.playerLoaded(player);
+						}
+					}.bind(player);
+					startPaused();
+				});
+			});
+		</script>
+		<script>
+		(function(m,e,d,i,a,l,b){m['GoogleAnalyticsObject']=a;m[a]=m[a]||function(){
+		(m[a].q=m[a].q||[]).push(arguments)},m[a].l=1*new Date();l=e.createElement(d),
+		b=e.getElementsByTagName(d)[0];l.async=1;l.src=i;b.parentNode.insertBefore(l,b)
+		})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+		ga('create', 'UA-43467815-2', 'auto');
+		ga('send', 'pageview');
+		</script>
+	</body>
+</html>
